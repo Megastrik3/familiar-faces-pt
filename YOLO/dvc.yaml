@@ -1,0 +1,7 @@
+stages:
+  fetch_kaggle_data:
+    cmd: kaggle datasets download -d 
+      canomercik/wider-face-dataset-for-yolov12-format -p dataset/wider-face 
+      --unzip
+    outs:
+    - data/my_dataset
