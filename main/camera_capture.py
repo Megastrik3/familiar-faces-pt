@@ -1,5 +1,6 @@
 
 import math
+import time
 import cv2
 import numpy as np
 import threading
@@ -98,30 +99,42 @@ class KalmanFilter():
         self.y = int(y)
         self.w = int(w)
         self.h = int(h)
+        self.dt = 0.5
 
-        self.kalman = cv2.KalmanFilter(4, 2)
+        self.kalman = cv2.KalmanFilter(6, 2, 0)
         self.kalman.measurementMatrix = np.array(
-            [[1, 0, 0, 0],
-             [0, 1, 0, 0]], np.float32)
+            [[1, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array(
-            [[1, 0, 1, 0],
-             [0, 1, 0, 1],
-             [0, 0, 0.95, 0],
-             [0, 0, 0, 0.95]], np.float32)
-        self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 0.0001
-        self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * 1
+            [[1, 0, self.dt, 0, 0.5*self.dt**2, 0],
+             [0, 1, 0, self.dt, 0, 0.5*self.dt**2],
+             [0, 0, 0.95, 0, self.dt, 0],
+             [0, 0, 0, 0.95, 0, self.dt],
+             [0, 0, 0, 0, 1, 0],
+             [0, 0, 0, 0, 0, 1]], np.float32)
+        self.kalman.processNoiseCov = np.eye(6, dtype=np.float32) * 0.1
+        self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * 0.1
         cx = x+w/2
         cy = y+h/2
 
-        self.kalman.statePre = np.array([[cx], [cy], [0], [0]], np.float32)
-        self.kalman.statePost = np.array([[cx], [cy], [0],  [0]], np.float32)
+        self.kalman.statePre = np.array([[cx], [cy], [0], [0], [0], [0]], np.float32)
+        self.kalman.statePost = np.array([[cx], [cy], [0],  [0], [0], [0]], np.float32)
 
-    def predict(self):
+    def predict(self, fps=None):
         """Generate bounding box prediction from initial frame.
 
         Returns:
             Prediction: Returns the predicted bounding box coordinates.
         """
+        if fps is not None:
+            self.dt = 1/fps
+            self.kalman.transitionMatrix = np.array(
+            [[1, 0, self.dt, 0, 0.5*self.dt**2, 0],
+             [0, 1, 0, self.dt, 0, 0.5*self.dt**2],
+             [0, 0, 0.95, 0, self.dt, 0],
+             [0, 0, 0, 0.95, 0, self.dt],
+             [0, 0, 0, 0, 1, 0],
+             [0, 0, 0, 0, 0, 1]], np.float32)
         self.decay += 1
         self.prediction = self.kalman.predict()
         return self.prediction
@@ -145,6 +158,7 @@ class KalmanFilter():
         Returns:
             Tuple: The coordinates of the predicted bounding box.
         """
+        self.prediction = self.kalman.predict()
         pred_cx = self.prediction[0][0]
         pred_cy = self.prediction[1][0]
 
@@ -153,17 +167,28 @@ class KalmanFilter():
 
         return pred_x, pred_y, self.w, self.h
 
+    def get_acceleration(self):
+        """Get the acceleration of a prediction
+
+        Returns:
+            Tuple[float, float]: The acceleration values (acc_x, acc_y).
+        """
+        acc_x = self.prediction[4][0]
+        acc_y = self.prediction[5][0]
+        return acc_x, acc_y
 
 
 if __name__ == "__main__":
     camera = CameraCapture()
     camera.start()
+    total_frames = 0
     frame_num = 0
     id = 0
     active_filters = []
 
     try:
         while True:
+            fps = camera.capture.get(cv2.CAP_PROP_FPS)
             # Run the camera frame capture loop
             frame = camera.get_frame()
 
@@ -172,7 +197,7 @@ if __name__ == "__main__":
 
                 # Create initial predictions (gi)
                 for kf in active_filters:
-                    kf.predict()
+                    kf.predict(fps)
                 # Pass frame to YOLO model return face_frame
                 if frame_num % 10 == 0 or frame_num == 1:
                     track_window = camera.predictFrame()
@@ -200,13 +225,22 @@ if __name__ == "__main__":
                             if best_match is not None:
                                 best_match.update(window)
                             else:
-                                new_filter = KalmanFilter(id, frame, window)
+                                new_filter = KalmanFilter(id, window)
                                 active_filters.append(new_filter)
                                 id += 1
 
                 for kf in active_filters:
                     x, y, w, h = kf.get_position()
                     cv2.rectangle(frame, (int(x-(w//2)), int(y-(h//2))), (int(x + (w//2)), int(y + (h//2))), (0, 255, 0), 2)
+                    ax, ay = kf.get_acceleration()
+                    # After some rudementary testing, it seems that an acceleration of 30 or less is a good threshold for 
+                    # determining if a face is still or not.
+                    #print(kf.id, "Acceleration:", ax, ay)
+                    if abs(ax) < 30 and abs(ay) < 30:
+                        found_face = frame[int(y-(h//2)):int(y+(h//2)), int(x-(w//2)):int(x+(w//2))]
+                        found_face = cv2.resize(found_face, (160, 160))
+                        #TODO: Call the FaceNet model.
+
 
                 # Display the frame
                 cv2.imshow("Familiar Faces", frame)
