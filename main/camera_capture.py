@@ -22,6 +22,7 @@ class CameraCapture:
         self.frame = None
         self.running = False
         self.thread = None
+        self.yolo = yolo_det.YoloDetect()
 
     def start(self):
         """Start the camera capture loop
@@ -44,6 +45,10 @@ class CameraCapture:
             ret, frame = self.capture.read()
             if ret:
                 self.frame = frame
+        
+    def predictFrame(self):
+        return self.yolo.predict(self.frame)
+
 
     def stop(self):
         """End the camera process and empty the thread.
@@ -62,14 +67,31 @@ class CameraCapture:
         return self.frame
     
 
-class KalmanFilter():
+# I have never worked with Kalman filters before, so I used a variety of tools to help me understand how to use them,
+# and how to implement them.
+# I used the following two articles to give me a basic understanding of how to structure my Kalman filter class
+# and what types of operations and initializations I would need to use:
     #https://pieriantraining.com/kalman-filter-opencv-python-example/
-
     #https://www.bacancytechnology.com/qanda/python/opencv-kalman-filter-with-python
-    def __init__(self, id, hsv_frame, track_window):
+# Then, I used Google Gemini to help me understand how to use that knowledge for my particular application.
+# While Gemini helped me get started, I quickly understood what the various operations and functions were doing,
+# and was able to customize them to my application. I have throughly reviewed the code and understand how it is
+# working for my application. I have included the chat history for the Kalman filter below:
+    #https://gemini.google.com/share/4bc3e63296c2
+class KalmanFilter():
+    """Class to implement a Kalman filter
+    """
+    def __init__(self, id, track_window):
+        """Create a Kalman filter to track faces throughout the frame.
+
+        Args:
+            id (int): Fitler identifier, used to keep track of multiple filters
+            track_window (array): The coordienates of the box detected by the YOLO model, used to initialize the Kalman filter
+        """
         self.id = id
         self.track_window = track_window
         self.decay = 0
+        self.prediction = None
 
         x ,y, w, h = self.track_window
         self.x = int(x)
@@ -95,11 +117,21 @@ class KalmanFilter():
         self.kalman.statePost = np.array([[cx], [cy], [0],  [0]], np.float32)
 
     def predict(self):
+        """Generate bounding box prediction from initial frame.
+
+        Returns:
+            Prediction: Returns the predicted bounding box coordinates.
+        """
         self.decay += 1
-        prediction = self.kalman.predict()
-        return prediction
+        self.prediction = self.kalman.predict()
+        return self.prediction
     
     def update(self, track_window):
+        """Update the current location of the predicted bounding box.
+
+        Args:
+            track_window (array): The coordinates of the box detected by the YOLO model, used to update the Kalman filter
+        """
         self.decay = 0
         x ,y, w, h = track_window
         cx = x+w/2
@@ -108,27 +140,24 @@ class KalmanFilter():
         self.kalman.correct(measurement)
 
     def get_position(self):
-        # Generated with the help of Gemini. I have reviewed the code and understand
-        # how it works. I am new to using Kalman filters, so I have used AI to help me
-        # understand what functions I need to use and how to use them.
-        # 1. Get the predicted state
-        prediction = self.kalman.predict()
+        """Get the position of the predicted bounding box.
 
-        # 2. Extract center x and center y (the first two values)
-        pred_cx = prediction[0][0]
-        pred_cy = prediction[1][0]
+        Returns:
+            Tuple: The coordinates of the predicted bounding box.
+        """
+        pred_cx = self.prediction[0][0]
+        pred_cy = self.prediction[1][0]
 
-        # 3. Calculate the top-left corner
         pred_x = int(pred_cx - (self.w / 2))
         pred_y = int(pred_cy - (self.h / 2))
 
-        # Return the top-left x, y, and the width, height
         return pred_x, pred_y, self.w, self.h
+
+
 
 if __name__ == "__main__":
     camera = CameraCapture()
     camera.start()
-    yolo = yolo_det.YoloDetect()
     frame_num = 0
     id = 0
     active_filters = []
@@ -141,26 +170,27 @@ if __name__ == "__main__":
             if frame is not None:
                 frame_num += 1
 
-                # Create initial predictions
+                # Create initial predictions (gi)
                 for kf in active_filters:
                     kf.predict()
                 # Pass frame to YOLO model return face_frame
                 if frame_num % 10 == 0 or frame_num == 1:
-                    track_window = yolo.predict(frame)
+                    track_window = camera.predictFrame()
 
                     # If the YOLO model is detecting a face, call the Kalman filter class
                     if track_window.shape[0] > 0:
-                        # For every box detected by YOLO, search to see if there is a Kalman filter nearby
+                        # For every box detected by YOLO, search to see if there is a Kalman filter nearby (gi)
                         for window in track_window:
                             x, y, w, h = window
                             best_match = None
                             nearest_match = 200
 
                             # For every filter, search for the closest one to the center of the detected box.
-                            # If there is a match, update the filter. Otherwise, create a new filter.
+                            # If there is a match, update the filter. Otherwise, create a new filter. (gi)
                             for kf in active_filters:
                                 pred_cx, pred_cy, _, _ = kf.get_position()
                                 distance = math.hypot(x - pred_cx, y - pred_cy)
+
                                 if distance < nearest_match:
                                     nearest_match = distance
                                     best_match = kf
