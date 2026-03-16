@@ -1,6 +1,4 @@
 from ultralytics import YOLO
-import numpy as np
-import camera_capture as cam_cap
 
 
 class YoloDetect:
