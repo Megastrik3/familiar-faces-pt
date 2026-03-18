@@ -170,9 +170,9 @@ if __name__ == "__main__":
                 # determining if a face is still or not.
                 #print(kf.id, "Acceleration:", ax, ay)
                 if abs(ax) < 30 and abs(ay) < 30 and kf.permanance > 30:
-                    found_face = camera.crop_face(x, y, w, h)
+                    #found_face = camera.crop_face(x, y, w, h)
                     #TODO: Call the FaceNet model. 
-                    face_det.detect(found_face)
+                    face_det.detect(frame, x, y, w, h)
                     kf.permanance = 0
 
             # Display the frame once a non-empty image is available.
