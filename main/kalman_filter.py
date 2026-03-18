@@ -26,6 +26,7 @@ class KalmanFilter():
         self.track_window = track_window
         self.decay = 0
         self.prediction = None
+        self.permanance = 0
 
         x ,y, w, h = self.track_window
         self.x = int(x)
@@ -79,6 +80,7 @@ class KalmanFilter():
             track_window (array): The coordinates of the box detected by the YOLO model, used to update the Kalman filter
         """
         self.decay = 0
+        self.permanance += 1
         x ,y, w, h = track_window
         cx = x+w/2
         cy = y+h/2

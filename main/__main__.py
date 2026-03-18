@@ -3,6 +3,7 @@ import math
 import cv2
 import kalman_filter as kalman_filter
 import yolo_detect as yolo_det
+import deepface_det as face_det
 import threading
 
 # Class was generated with AI. All functions were read through and understood by the author.
@@ -111,6 +112,7 @@ if __name__ == "__main__":
     id = 0
     frame_num = 0
     active_filters = []
+    face_det = face_det.DeepFaceDetector()
 
     try:
         while True:
@@ -167,9 +169,12 @@ if __name__ == "__main__":
                 # After some rudementary testing, it seems that an acceleration of 30 or less is a good threshold for 
                 # determining if a face is still or not.
                 #print(kf.id, "Acceleration:", ax, ay)
-                if abs(ax) < 30 and abs(ay) < 30:
+                if abs(ax) < 30 and abs(ay) < 30 and kf.permanance > 30:
                     found_face = camera.crop_face(x, y, w, h)
                     #TODO: Call the FaceNet model. 
+                    face_det.detect(found_face)
+                    kf.permanance = 0
+
             # Display the frame once a non-empty image is available.
             cv2.imshow("Familiar Faces", frame)
 
