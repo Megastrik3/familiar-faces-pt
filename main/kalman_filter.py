@@ -26,6 +26,8 @@ class KalmanFilter():
         self.track_window = track_window
         self.decay = 0
         self.prediction = None
+        self.permanance = 0
+        self.name = None
 
         x ,y, w, h = self.track_window
         self.x = int(x)
@@ -79,7 +81,10 @@ class KalmanFilter():
             track_window (array): The coordinates of the box detected by the YOLO model, used to update the Kalman filter
         """
         self.decay = 0
+        self.permanance += 1
         x ,y, w, h = track_window
+        self.w = int(w)
+        self.h = int(h)
         cx = x+w/2
         cy = y+h/2
         measurement = np.array([[cx], [cy]], np.float32)
@@ -99,13 +104,19 @@ class KalmanFilter():
         pred_y = int(pred_cy - (self.h / 2))
 
         return pred_x, pred_y, self.w, self.h
-
-    def get_acceleration(self):
-        """Get the acceleration of a prediction
+    
+    def get_velocity(self):
+        """Get the velocity of a prediction
 
         Returns:
-            Tuple[float, float]: The acceleration values (acc_x, acc_y).
+            Tuple[float, float]: The velocity values (vel_x, vel_y).
         """
-        acc_x = self.prediction[4][0]
-        acc_y = self.prediction[5][0]
-        return acc_x, acc_y
+        vel_x = self.prediction[2][0]
+        vel_y = self.prediction[3][0]
+        return vel_x, vel_y
+
+    def setName(self, name):
+        self.name = name
+
+    def getName(self):
+        return self.name
