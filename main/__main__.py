@@ -25,6 +25,7 @@ class CameraCapture:
         self.thread = None
         self.yolo = yolo_det.YoloDetect()
 
+
     def start(self):
         """Start the camera capture loop
 
