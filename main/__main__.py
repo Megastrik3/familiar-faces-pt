@@ -25,6 +25,7 @@ class CameraCapture:
         self.thread = None
         self.yolo = yolo_det.YoloDetect()
 
+
     def start(self):
         """Start the camera capture loop
 
@@ -90,7 +91,9 @@ class CameraCapture:
         """
         return cv2.resize(self.frame[(y-(h//2)):y+(h//2), (x-(w//2)):x+(w//2)], (160, 160))
     
-    def draw_box(self, x, y, w, h):
+
+    
+    def draw_box(self, x, y, w, h, active_name=None):
         """Draw a bounding box on the camera frame.
 
         Args:
@@ -101,6 +104,8 @@ class CameraCapture:
             h (int): The height of the bounding box.
         """
         cv2.rectangle(self.frame, (int(x-(w//2)), int(y-(h//2))), (int(x + (w//2)), int(y + (h//2))), (0, 255, 0), 2)
+        if active_name is not None and active_name != "None":
+            cv2.putText(self.frame, f"Still Face Detected: {active_name}", (int(x-(w//2)), int(y-(h//2))-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     
 
@@ -153,7 +158,7 @@ if __name__ == "__main__":
                                 if distance < nearest_match:
                                     nearest_match = distance
                                     best_match = kf
-                                # If the Kalman filter has not been updated for `5 frames, prune it
+                                # If the Kalman filter has not been updated for 15 frames, prune it
                                 if kf.decay > 15:
                                     active_filters.remove(kf)
                             if best_match is not None:
@@ -164,15 +169,16 @@ if __name__ == "__main__":
                                 id += 1
             for kf in active_filters:
                 x, y, w, h = kf.get_position()
-                ax, ay = kf.get_acceleration()
-                camera.draw_box(x, y, w, h)
+                vx, vy = kf.get_velocity()
+                camera.draw_box(x, y, w, h, kf.getName())
                 # After some rudementary testing, it seems that an acceleration of 30 or less is a good threshold for 
                 # determining if a face is still or not.
                 #print(kf.id, "Acceleration:", ax, ay)
-                if abs(ax) < 30 and abs(ay) < 30 and kf.permanance > 30:
+                if abs(vx) < 30 and abs(vy) < 30 and kf.permanance > 30:
                     #found_face = camera.crop_face(x, y, w, h)
                     #TODO: Call the FaceNet model. 
-                    face_det.detect(frame, x, y, w, h)
+                    name = face_det.detect(frame, x, y, w, h)
+                    kf.setName(name)
                     kf.permanance = 0
 
             # Display the frame once a non-empty image is available.
