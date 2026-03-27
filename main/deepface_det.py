@@ -1,6 +1,7 @@
 from deepface import DeepFace
 from deepface.modules.exceptions import FaceNotDetected
 from collections import Counter
+import database as face_db
 import numpy as np
 import threading
 import cv2
@@ -19,6 +20,7 @@ class DeepFaceDetector():
         self.h = None
         self.retry = 0
         self.return_name = None
+        self.db = face_db.Database()
 
     def crop_face(self, img, x, y, w, h, adjust=0):
         """Crop a face from the camera frame.
@@ -48,11 +50,13 @@ class DeepFaceDetector():
 
     def _detect_face(self, img):
         try:
+            # Generate embedding for the detected face
             self.embedding = DeepFace.represent(img, model_name=self.model_name, detector_backend='mtcnn')[0]["embedding"]
+            # Normalize the embedding
             self.embedding = self.embedding / np.linalg.norm(self.embedding)
-            print("Embedding shape:", self.embedding.shape)
-            #self._searchDatabase(self.embedding, img)
-            self.return_name = self.knn_identify(img, self.embedding)
+            # Run KNN to identify face
+            self.return_name = self.knn_locate_names(self.embedding, img)
+            # Reset retry counter on successful detection
             self.retry = 0
         except FaceNotDetected as e:
             print("Face not properly centered or detected")
@@ -61,62 +65,34 @@ class DeepFaceDetector():
             if self.retry < 3:
                 self.detect(self.frame, self.x, self.y, self.w, self.h, adjust=20)
 
+    def knn_locate_names(self, embedding, img):
+        # Get all contacts from the database
+        contacts = self.db.get_contacts()
+        # Get all embeddings from the database. Has form (contact_ids(array), embedding(array))
+        contact_ids, embeddings = self.db.get_embeddings()
+        # If there are embeddings in the database
+        if len(embeddings) != 0:
+            # Compute cosine similarity between the new embedding and all embeddings in the database
+            similarities = np.dot(embeddings, embedding)
+            distances = 1 - similarities
+            # Get the indices of the top 5 most similar embeddings
+            sorted_similarities = np.argsort(distances)[:5]
+            # Get the distances for the top 5 most similar embeddings
+            top_distances = [distances[idx] for idx in sorted_similarities]
+            avg_distance = np.mean(top_distances)
 
-
-    # def _searchDatabase(self, embedding, img):
-    #     min_distance = float('inf')
-    #     identity = None
-    #     if not self.embedded_face_database:
-    #         # save the face image for later
-    #         self.face_img_database[f"unknown{self.id}"] = img, self.id
-    #         self.embedded_face_database[f"unknown{self.id}"] = embedding, f"unknown{self.id}" ,self.id, 1
-    #         print(f"Hello unknown{self.id}! You've been seen 1 time.")
-    #         self.id += 1
-    #     else:
-    #         for name, data in self.embedded_face_database.items():
-    #             db_embedding, id, quantity = data
-    #             distance = 1 - np.dot(embedding, db_embedding)
-    #             print(f"Comparing with {name}, distance: {distance}")
-    #             if distance < min_distance:
-    #                 min_distance = distance
-    #                 identity = name
-    #         if min_distance < 0.5:
-    #             print(f"Hello {identity}! You've been seen {self.embedded_face_database[identity][3]+1} times.")
-    #             self.embedded_face_database[identity] = (embedding, self.embedded_face_database[identity][2], self.embedded_face_database[identity][3]+1)
-    #         else:
-    #             # save the face image for later
-    #             self.face_img_database[f"unknown{self.id}"] = img, self.id
-    #             self.embedded_face_database[f"unknown{self.id}"] = embedding, f"unknown{self.id}" ,self.id, 1
-    #             print(f"Hello unknown{self.id}! You've been seen 1 time.")
-    #             self.id += 1
-
-    def knn_identify(self, img, embedding, k=6, threshold=0.75):
-        if not self.embedded_face_database:
-            self.face_img_database[f"unknown{self.id}"] = img, self.id
-            self.embedded_face_database[f"unknown{self.id}"] = embedding, f"unknown{self.id}" ,self.id, 1
-            print(f"Hello unknown{self.id}! You've been seen 1 time.")
-            self.id += 1
-            return f"unknown{self.id-1}"
-
-        names = list(self.embedded_face_database.keys())
-        embeddings = np.array([entry[0] for entry in self.embedded_face_database.values()])
-        similarities = np.dot(embeddings, embedding)
-        top_k = np.argsort(similarities)[-min(k, len(similarities)):]
-        valid_matches = []
-        for idx in top_k:
-            if similarities[idx] > threshold:
-                valid_matches.append(names[idx])
-        if not valid_matches:
-            # save the face image for later
-            self.face_img_database[f"unknown{self.id}"] = img, self.id
-            self.embedded_face_database[f"unknown{self.id}"] = embedding, f"unknown{self.id}" ,self.id, 1
-            print(f"Hello unknown{self.id}! You've been seen 1 time.")
-            self.id += 1
-            return f"unknown{self.id-1}"
-        else:
-            most_frequent = Counter(valid_matches).most_common(1)[0][0]
-            _, label, face_id, quantity = self.embedded_face_database[most_frequent]
-            updated_quantity = quantity + 1
-            self.embedded_face_database[most_frequent] = (embedding, label, face_id, updated_quantity)
-            print(f"Hello {most_frequent}! You've been seen {updated_quantity} times.")
-            return label
+            # Define a similarity threshold. If the most common contact_id is above this threshold, consider it a match.
+            if avg_distance < 0.35:
+                # Get the most common contact_id among the top 5 most similar embeddings
+                most_common = Counter([contact_ids[idx] for idx in sorted_similarities]).most_common(1)[0][0] # Get the first most common, then get the value of that most common
+                print(most_common)
+                # Walk through the contacts to find the contact info corresponding to the contact_id
+                # This is AI code. I want to completely rewrite this function
+                contact_info = next((contact for contact in contacts if contact[1] == most_common), None)
+                if contact_info:
+                    name, _, encounter_count, _, _ = contact_info
+                    print(f"Hello {name}! You've been seen {encounter_count} times.")
+                    return name
+        print("No matching contact found. Consider adding this face to the database.")
+        self.db.add_unknown(embedding, img)
+        return None
