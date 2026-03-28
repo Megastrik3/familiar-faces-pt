@@ -177,8 +177,8 @@ if __name__ == "__main__":
                 if abs(vx) < 30 and abs(vy) < 30 and kf.permanance > 30:
                     #found_face = camera.crop_face(x, y, w, h)
                     #TODO: Call the FaceNet model. 
-                    name = face_det.detect(frame, x, y, w, h)
-                    kf.setName(name)
+                    name = face_det.detect(frame, x, y, w, h, kf)
+                    camera.draw_box(x, y, w, h, kf.getName())
                     kf.permanance = 0
 
             # Display the frame once a non-empty image is available.

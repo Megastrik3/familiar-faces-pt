@@ -36,19 +36,19 @@ class DeepFaceDetector():
         """
         return cv2.resize(img[(y-(h+adjust)//2):y+(h+adjust)//2, (x-(w+adjust)//2):x+(w+adjust)//2], (160, 160))
 
-    def detect(self, img, x, y, w, h, adjust=0):
+    def detect(self, img, x, y, w, h, kf, adjust=0):
         self.frame = img
         self.x = x
         self.y = y
         self.w = w
         self.h = h
         face= self.crop_face(img, x, y, w, h, adjust)
-        self.thread = threading.Thread(target=self._detect_face, args=(face,))
+        self.thread = threading.Thread(target=self._detect_face, args=(face, kf))
         self.thread.start()
         return self.return_name
 
 
-    def _detect_face(self, img):
+    def _detect_face(self, img, kf):
         try:
             # Generate embedding for the detected face
             self.embedding = DeepFace.represent(img, model_name=self.model_name, detector_backend='mtcnn')[0]["embedding"]
@@ -56,6 +56,9 @@ class DeepFaceDetector():
             self.embedding = self.embedding / np.linalg.norm(self.embedding)
             # Run KNN to identify face
             self.return_name = self.knn_locate_names(self.embedding, img)
+
+            if self.return_name is not None:
+                kf.setName(self.return_name)
             # Reset retry counter on successful detection
             self.retry = 0
         except FaceNotDetected as e:
@@ -63,7 +66,7 @@ class DeepFaceDetector():
             print("Error:", e)
             self.retry += 1
             if self.retry < 3:
-                self.detect(self.frame, self.x, self.y, self.w, self.h, adjust=20)
+                self.detect(self.frame, self.x, self.y, self.w, self.h, kf, adjust=20)
 
     def knn_locate_names(self, embedding, img):
         # Get all contacts from the database
@@ -81,7 +84,7 @@ class DeepFaceDetector():
             top_distances = [distances[idx] for idx in sorted_similarities]
             avg_distance = np.mean(top_distances)
 
-            # Define a similarity threshold. If the most common contact_id is above this threshold, consider it a match.
+            # Define a similarity threshold. If the most common contact_id is below this threshold, consider it a match.
             if avg_distance < 0.35:
                 # Get the most common contact_id among the top 5 most similar embeddings
                 most_common = Counter([contact_ids[idx] for idx in sorted_similarities]).most_common(1)[0][0] # Get the first most common, then get the value of that most common
@@ -91,7 +94,8 @@ class DeepFaceDetector():
                 contact_info = next((contact for contact in contacts if contact[1] == most_common), None)
                 if contact_info:
                     name, _, encounter_count, _, _ = contact_info
-                    print(f"Hello {name}! You've been seen {encounter_count} times.")
+                    print(f"Hello {name}! You've been seen {encounter_count+1} times.")
+                    self.db.update_contact(int(most_common), embedding)
                     return name
         print("No matching contact found. Consider adding this face to the database.")
         self.db.add_unknown(embedding, img)
