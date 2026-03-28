@@ -1,7 +1,6 @@
 import sqlite3
 from sklearn.cluster import DBSCAN
 import numpy as np
-import threading
 import cv2
 
 class Database():
@@ -118,8 +117,8 @@ class Database():
             self.connection.close()
             self.recan_count += 1
             if self.recan_count >= self.rescan_threshold:
-                self.thread = threading.Thread(target=self.rescan_unknowns)
-                self.thread.start()
+                # self.thread = threading.Thread(target=self.rescan_unknowns)
+                # self.thread.start()
                 self.rescan_threshold = 0
 
     def add_contact(self, name, embeddings, image):
@@ -224,32 +223,49 @@ class Database():
 
 
             # Send the new contacts to the UI for confirmation and addition to the contacts table.
-            for label, embeddings in new_contacts.items():
-                find_image_idx = list(labels).index(label)
-                # Display the first image of the new contact for user confirmation
-                name = input(f"Please enter a name for the new contact with label {label}: ")
-                self.add_contact(name, embeddings, unknown_images[find_image_idx])
-                
+            pending_contact_approvals = []
+            if len(unknown_embeddings) != 0:
+                for label, embeddings in new_contacts.items():
+                    find_image_idx = list(labels).index(label)
+                    image = unknown_images[find_image_idx]
+                    pending_contact_approvals.append({
+                        "embeddings": embeddings,
+                        "image": image
+                    })
+                return pending_contact_approvals
+                    
 
-                # After processing, remove the unknown contacts from the database.
-                ##### AI Generated Code Notice #####
-                # Generated with the help of CoPilot due to lack of experience with SQL.
-                # Code has been throughly reviewed and modified as necessary.
-                ##### Code Explanation #####
-                # SQL quary is divided into two parts, the delete command, and the find command.
-                # First, we start with the find command. Here, we select the id (primary keys) from the unknown_contacts table
-                # where the embedding matches the embeddings found in the current index of the new_contacts dictionary.
-                # Then, we use those ids to delete the corresponding entries from the unknown_contacts table.
-                self.connection = sqlite3.connect("familiar_contacts.db")
-                self.cursor = self.connection.cursor()
-                embedding_blobs = [np.asarray(embedding, dtype=np.float64).tobytes() for embedding in embeddings]
-                self.cursor.execute('''DELETE FROM unknown_contacts
-                                    WHERE id IN (SELECT id FROM unknown_contacts
-                                    WHERE embedding IN ({}))'''.format(','.join('?' for _ in embedding_blobs)), embedding_blobs)
-                self.connection.commit()
+                    # After processing, remove the unknown contacts from the database.
+                    ##### AI Generated Code Notice #####
+                    # Generated with the help of CoPilot due to lack of experience with SQL.
+                    # Code has been throughly reviewed and modified as necessary.
+                    ##### Code Explanation #####
+                    # SQL quary is divided into two parts, the delete command, and the find command.
+                    # First, we start with the find command. Here, we select the id (primary keys) from the unknown_contacts table
+                    # where the embedding matches the embeddings found in the current index of the new_contacts dictionary.
+                    # Then, we use those ids to delete the corresponding entries from the unknown_contacts table.
+                    # self.connection = sqlite3.connect("familiar_contacts.db")
+                    # self.cursor = self.connection.cursor()
+                    # embedding_blobs = [np.asarray(embedding, dtype=np.float64).tobytes() for embedding in embeddings]
+                    # self.cursor.execute('''DELETE FROM unknown_contacts
+                    #                     WHERE id IN (SELECT id FROM unknown_contacts
+                    #                     WHERE embedding IN ({}))'''.format(','.join('?' for _ in embedding_blobs)), embedding_blobs)
+                    # self.connection.commit()
         except sqlite3.Error as e:
             print(f"Error rescanning unknown contacts: {e}")
         finally:            
+            self.connection.close()
+
+
+    def clean_unknowns(self):
+        try:
+            self.connection = sqlite3.connect("familiar_contacts.db")
+            self.cursor = self.connection.cursor()
+            self.cursor.execute('''DELETE FROM unknown_contacts''')
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(f"Error cleaning unknown contacts: {e}")
+        finally:
             self.connection.close()
 
 
