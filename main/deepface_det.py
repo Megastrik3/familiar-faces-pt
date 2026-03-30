@@ -1,10 +1,11 @@
 from deepface import DeepFace
 from deepface.modules.exceptions import FaceNotDetected
 from collections import Counter
-import database as face_db
+import face_database as face_db
 import numpy as np
 import threading
 import cv2
+import queue
 
 class DeepFaceDetector():
     def __init__(self):
@@ -21,6 +22,26 @@ class DeepFaceDetector():
         self.retry = 0
         self.return_name = None
         self.db = face_db.Database()
+
+        # The following variables and start, stop, and _process_queue functions were added 
+        # with the help of Google Gemini. I was having some threading issues with the original code
+        # and being new to multithreading, used AI to help me understand how to properly use threading to run the face detection in the background.
+        # This is part of a larger re-threading conversation that I had with Gemini. I understand how the code works and find it very interesting
+        # how important queing and execution order are for this application.
+        # https://gemini.google.com/share/f693e2b7fa8c
+        self.queue = queue.Queue()
+        self.running = False
+        self.recan_count = 0
+        self.rescan_threshold = 13
+        self.pending_ui_queue = None
+
+    def start(self, pending_ui_queue):
+        self.pending_ui_queue = pending_ui_queue
+        if not self.running:
+            self.running = True
+            self.thread = threading.Thread(target=self._process_queue)
+            self.thread.start()
+
 
     def crop_face(self, img, x, y, w, h, adjust=0):
         """Crop a face from the camera frame.
@@ -42,10 +63,28 @@ class DeepFaceDetector():
         self.y = y
         self.w = w
         self.h = h
-        face= self.crop_face(img, x, y, w, h, adjust)
-        self.thread = threading.Thread(target=self._detect_face, args=(face, kf))
-        self.thread.start()
-        return self.return_name
+        face = self.crop_face(img, x, y, w, h, adjust)
+        self.queue.put((face, kf))
+
+    def _process_queue(self):
+        while self.running:
+            try:
+                face, kf = self.queue.get()
+                self._detect_face(face, kf)
+
+                if self.recan_count >= self.rescan_threshold:
+                    pending_contacts = self.db.rescan_unknowns()
+                    print(len(pending_contacts))
+                    for contact in pending_contacts:
+                        print(f"Re-scanned contacts")
+                        self.pending_ui_queue.put(contact)
+                        self.db.clean_unknowns(contact['embeddings'])
+                    self.recan_count = 0
+
+                self.queue.task_done()
+                self.recan_count += 1
+            except queue.Empty:
+                continue
 
 
     def _detect_face(self, img, kf):
@@ -100,3 +139,8 @@ class DeepFaceDetector():
         print("No matching contact found. Consider adding this face to the database.")
         self.db.add_unknown(embedding, img)
         return None
+
+    def stop(self):
+        self.running = False
+        if self.thread is not None:
+            self.thread.join()
