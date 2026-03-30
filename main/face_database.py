@@ -155,7 +155,7 @@ class Database():
             self.cursor = self.connection.cursor()
             self.cursor.execute('''UPDATE contacts
                                 SET encounter_count = encounter_count + 1,
-                                    last_seen = CURRENT_TIMESTAMP
+                                    last_seen = (datetime('now', 'localtime'))
                                 WHERE id = ?''', (int(contact_id),))
             self.connection.commit()
 
