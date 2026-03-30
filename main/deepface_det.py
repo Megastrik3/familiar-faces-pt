@@ -1,3 +1,4 @@
+from datetime import datetime
 from deepface import DeepFace
 from deepface.modules.exceptions import FaceNotDetected
 from collections import Counter
@@ -99,6 +100,8 @@ class DeepFaceDetector():
             if self.return_name is not None:
                 kf.setName(self.return_name)
             # Reset retry counter on successful detection
+            if self.return_name is None:
+                kf.setName(None)
             self.retry = 0
         except FaceNotDetected as e:
             print("Face not properly centered or detected")
@@ -132,10 +135,18 @@ class DeepFaceDetector():
                 # This is AI code. I want to completely rewrite this function
                 contact_info = next((contact for contact in contacts if contact[1] == most_common), None)
                 if contact_info:
-                    name, _, encounter_count, _, _ = contact_info
-                    print(f"Hello {name}! You've been seen {encounter_count+1} times.")
-                    self.db.update_contact(int(most_common), embedding)
-                    return name
+                    name, _, encounter_count, _, last_seen = contact_info
+                    date_format = "%Y-%m-%d %H:%M:%S"
+                    current_date = datetime.now()
+                    current_date = datetime.strptime(current_date.strftime(date_format), date_format)
+                    last_embedding_date = datetime.strptime(last_seen, date_format)
+                    print(f"Current date: {current_date}, Last embedding date: {last_embedding_date}")
+                    if (current_date - last_embedding_date).total_seconds() > 10: # 24 hours
+                        print(f"Hello {name}! You've been seen {encounter_count+1} times.")
+                        self.db.update_contact(int(most_common), embedding)
+                        return name
+                    else:
+                        print(f"Contact has not expired yet.")
         print("No matching contact found. Consider adding this face to the database.")
         self.db.add_unknown(embedding, img)
         return None

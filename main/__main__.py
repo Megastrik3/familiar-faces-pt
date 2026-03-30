@@ -226,7 +226,7 @@ def main():
                     if len(user_provided_name) > 0:
                         # Save the contact!
                         face_db.add_contact(user_provided_name, 
-                                            current_pending_contact["embeddings"], 
+                                            (current_pending_contact["embeddings"], current_pending_contact["created_at"]), 
                                             current_pending_contact["image"])
                         
                         # You would also run your DELETE FROM unknown_contacts SQL here
