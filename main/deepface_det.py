@@ -32,7 +32,7 @@ class DeepFaceDetector():
         self.queue = queue.Queue()
         self.running = False
         self.recan_count = 0
-        self.rescan_threshold = 2
+        self.rescan_threshold = 13
         self.pending_ui_queue = None
 
     def start(self, pending_ui_queue):
@@ -74,9 +74,11 @@ class DeepFaceDetector():
 
                 if self.recan_count >= self.rescan_threshold:
                     pending_contacts = self.db.rescan_unknowns()
+                    print(len(pending_contacts))
                     for contact in pending_contacts:
                         print(f"Re-scanned contacts")
                         self.pending_ui_queue.put(contact)
+                        self.db.clean_unknowns(contact['embeddings'])
                     self.recan_count = 0
 
                 self.queue.task_done()
