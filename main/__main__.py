@@ -100,9 +100,9 @@ class CameraCapture:
             w (int): The width of the bounding box.
             h (int): The height of the bounding box.
         """
-        cv2.rectangle(frame, (int(x-(w//2)), int(y-(h//2))), (int(x + (w//2)), int(y + (h//2))), (0, 255, 0), 2)
+        #cv2.rectangle(frame, (int(x-(w//2)), int(y-(h//2))), (int(x + (w//2)), int(y + (h//2))), (0, 255, 0), 2)
         if active_name is not None and active_name != "None":
-            cv2.putText(frame, f"Still Face Detected: {active_name}", (int(x-(w//2)), int(y-(h//2))-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, f"{active_name}", (int(x-(w//2)), int(y-(h//2))-10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
 
 def main():
     camera = CameraCapture()
@@ -226,7 +226,7 @@ def main():
                     if len(user_provided_name) > 0:
                         # Save the contact!
                         face_db.add_contact(user_provided_name, 
-                                            current_pending_contact["embeddings"], 
+                                            (current_pending_contact["embeddings"], current_pending_contact["created_at"]), 
                                             current_pending_contact["image"])
                         
                         # You would also run your DELETE FROM unknown_contacts SQL here
