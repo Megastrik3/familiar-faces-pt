@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from deepface import DeepFace
 from deepface.modules.exceptions import FaceNotDetected
 from collections import Counter
@@ -9,7 +9,7 @@ import cv2
 import queue
 
 class DeepFaceDetector():
-    def __init__(self):
+    def __init__(self, name_display_time=5, rescan_threshold=10):
         self.model_name = "Facenet"
         self.embedded_face_database = {}
         self.face_img_database = {}
@@ -23,6 +23,7 @@ class DeepFaceDetector():
         self.retry = 0
         self.return_name = None
         self.db = face_db.Database()
+        self.name_display_time = name_display_time
 
         # The following variables and start, stop, and _process_queue functions were added 
         # with the help of Google Gemini. I was having some threading issues with the original code
@@ -33,7 +34,7 @@ class DeepFaceDetector():
         self.queue = queue.Queue()
         self.running = False
         self.recan_count = 0
-        self.rescan_threshold = 13
+        self.rescan_threshold = rescan_threshold
         self.pending_ui_queue = None
 
     def start(self, pending_ui_queue):
@@ -70,7 +71,7 @@ class DeepFaceDetector():
     def _process_queue(self):
         while self.running:
             try:
-                face, kf = self.queue.get()
+                face, kf = self.queue.get(timeout=4)
                 self._detect_face(face, kf)
 
                 if self.recan_count >= self.rescan_threshold:
@@ -131,6 +132,7 @@ class DeepFaceDetector():
                 # Get the most common contact_id among the top 5 most similar embeddings
                 most_common = Counter([contact_ids[idx] for idx in sorted_similarities]).most_common(1)[0][0] # Get the first most common, then get the value of that most common
                 print(most_common)
+                # TODO: Rewrite the following code
                 # Walk through the contacts to find the contact info corresponding to the contact_id
                 # This is AI code. I want to completely rewrite this function
                 contact_info = next((contact for contact in contacts if contact[1] == most_common), None)
@@ -141,7 +143,7 @@ class DeepFaceDetector():
                     current_date = datetime.strptime(current_date.strftime(date_format), date_format)
                     last_embedding_date = datetime.strptime(last_seen, date_format)
                     print(f"Current date: {current_date}, Last embedding date: {last_embedding_date}")
-                    if (current_date - last_embedding_date).total_seconds() > 10: # 24 hours
+                    if (current_date + timedelta(seconds=5) - last_embedding_date).total_seconds() > 10: # 24 hours
                         print(f"Hello {name}! You've been seen {encounter_count+1} times.")
                         self.db.update_contact(int(most_common), embedding)
                         return name

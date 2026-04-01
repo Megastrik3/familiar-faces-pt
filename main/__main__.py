@@ -102,7 +102,7 @@ class CameraCapture:
         """
         #cv2.rectangle(frame, (int(x-(w//2)), int(y-(h//2))), (int(x + (w//2)), int(y + (h//2))), (0, 255, 0), 2)
         if active_name is not None and active_name != "None":
-            cv2.putText(frame, f"Still Face Detected: {active_name}", (int(x-(w//2)), int(y-(h//2))-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(frame, f"{active_name}", (int(x-(w//2)), int(y-(h//2))-10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
 
 def main():
     camera = CameraCapture()
