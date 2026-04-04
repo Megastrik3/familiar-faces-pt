@@ -108,8 +108,8 @@ class DeepFaceDetector():
             print("Face not properly centered or detected")
             print("Error:", e)
             self.retry += 1
-            if self.retry < 3:
-                self.detect(self.frame, self.x, self.y, self.w, self.h, kf, adjust=20)
+            #if self.retry < 3:
+                #self.detect(self.frame, self.x, self.y, self.w, self.h, kf, adjust=20)
 
     def knn_locate_names(self, embedding, img):
         # Get all contacts from the database
