@@ -28,11 +28,11 @@ class FamiliarFacesPT():
     """
     def __init__(self, root):
         self.root = root
-        self.root.geometry("800x600")
+        self.root.geometry("1920x1080")
         self.root.title("Familiar Faces (Prototype)")
         self.prompt_frame = tk.Frame(root)
         # Display live video feed
-        self.live_feed_label = tk.Label(root, width=800, height=600)
+        self.live_feed_label = tk.Label(root, width=640, height=640, bg="black")
         self.live_feed_label.pack(pady=10)
 
         # UI elements for name prompt and submission
