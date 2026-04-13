@@ -32,7 +32,7 @@ class FamiliarFacesPT():
         self.root.title("Familiar Faces (Prototype)")
         self.prompt_frame = tk.Frame(root)
         # Display live video feed
-        self.live_feed_label = tk.Label(root, width=640, height=640, bg="black")
+        self.live_feed_label = tk.Label(root, width=1280, height=720, bg="black")
         self.live_feed_label.pack(pady=10)
 
         # UI elements for name prompt and submission
@@ -133,6 +133,7 @@ class FamiliarFacesPT():
                 self.show_name_prompt_ui()
             
             cv2_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            cv2_frame = cv2.resize(cv2_frame, (1280, 720))
             img = Image.fromarray(cv2_frame)
             imgtk = ImageTk.PhotoImage(image=img)
             self.live_feed_label.imgtk = imgtk

@@ -128,7 +128,7 @@ class DeepFaceDetector():
             avg_distance = np.mean(top_distances)
 
             # Define a similarity threshold. If the most common contact_id is below this threshold, consider it a match.
-            if avg_distance < 0.35:
+            if avg_distance < 0.45:
                 # Get the most common contact_id among the top 5 most similar embeddings
                 most_common = Counter([contact_ids[idx] for idx in sorted_similarities]).most_common(1)[0][0] # Get the first most common, then get the value of that most common
                 print(most_common)
