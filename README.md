@@ -6,32 +6,18 @@
 ---
 
 ## Problem Statement
-Remembering people's names has always been a bit of a challenge for me. Either I don't hear their name properly the first time, or I only see someone once or twice and don't see them frequently enough to remember their name. 
-
-This is an especially difficult challenge for teachers, recruiters, and those who meet lots of people on a regular basis. It can be challenging to recall names quickly when you've already met 10+ people at that same time or when someone has a unique name. 
-
-**Familiar Faces aims to solve this problem.** What if there was a tool whose sole purpose was to remember names for you? That is exactly what Familiar Faces is: a tool designed to discretely help you remember people's names so that you can better relate and communicate with your peers, colleagues, and students.
+Remembering people's names has always been a bit of a challenge for me. Either I don't hear their name properly the first time, or I only see someone once or twice and don't see them frequently enough to remember their name. This is especially a difficult challenge for teachers, recruiters, and those who meet lots of people on a regular basis. It can be challenging to recall names quickly when you've already met 10+ people at that same time or when someone has a unique name. Familiar Faces aims to solve this problem. What if there was a tool that's sole purpose was to remember names for you? That is exactly what Familiar Faces is, a tool designed to discretely help you remember people's names so that you can better relate and communicate with your peers, colleagues, and students.
 
 ## Project Description
-Familiar Faces is a prototype for a mobile and AR/XR application designed to help users remember the names of people they have not seen in a while or have only recently met. 
-
-It works by detecting the faces of people you encounter. After a defined number of encounters—or after a specific time duration—Familiar Faces will ask if you want to add that person's face to your **"Contacts"**. Once a person is added, their name will be displayed above their head the next time you see them (after a set duration of time).
+Familiar faces (prototype) is a prototype for a mobile and AR/XR application designed to help users remember names of people that they have not seen in a while or that they have only recently met. It does this by detecting faces of people that you encounter. Then, after a defined number of encounters, or after a time duration, Familiar Faces will ask the user if they want to add that person's face to their list of "Contacts". Once a person is added to the user's "contacts," they will have their name displayed above their head next time the user sees them after a set duration of time.
 
 ## Proposed Method
-To achieve this, several AI models are utilized. While the application is designed with mobile hardware constraints in mind, the current computer-based prototype will forgo these constraints as necessary for rapid development.
+In order to achieve this goal, several AI models will be used. Since this is an application designed to run on mobile hardware but is being prototyped on a computer, the application will be designed with the hardware constraints of a mobile device in mind, but will forgo these design constraints as necessary to complete the project on time.
 
-Processing every camera frame is computationally expensive. Therefore, we use a pipeline of "filters" to ensure heavy detection only runs when necessary:
-
-1. **Pre-Detection & Cropping:** A lightweight **YOLO** model quickly and cheaply detects every face that appears in the frame. This avoids running complex recognition on empty frames and crops the faces out for the next step.
-2. **Object Tracking:** A **Kalman filter** tracks the movement of the detected face throughout the frame, capturing frames where the face is clearly visible. It also anchors the 2D spatial projection (the text box displaying the name) above the contact's head. *(Note: Future work will explore 3D spatial projection).*
-3. **Facial Recognition:** The cropped face image is passed to Google's **FaceNet** algorithm. Optimized for mobile devices, FaceNet encodes the detected face into a high-dimensional vector and saves it to a database. 
-4. **Identification:** A simple distance calculation checks if this face embedding is "familiar" (already in the database) or new.
+Processing every frame captured by a camera is a very computationally expensive task. As such, various "filters" will need to be used to run detection only when a face is actively present. To do this, a lightweight YOLO model will be used to simply detect every face that appears in the frame. Using this method, we will be able to identify faces quickly and cheaply, without having to run the face detection algorithm on every frame. This pre-detection step will also be used to crop the faces out so that the face is ready to be passed to the facial recognition model. Then, a kalman filter will be used to track the movement of the detected face throughout the frame. This will be used to capture frames where the face is clearly visible. The cropped face image will then be passed to the face detection algorithm. The kalman filter will also be how the name is displayed above the contact's head. Once a person has been positively identified, a textbox will be displayed in 2D space above their head (future work will look into 3d spatial projection, but that is outside of the scope of the project for now). In order to identify a person by their face, the FaceNet algorithm by Google will be used. This algorithm is already optimized for running on mobile devices, making it a great choice for this application. The FaceNet model works by encoding detected faces into a high-dimensional vector, then saving that vector to a database. A simple distance calculation can then be used to see if this face embedding is "familiar" or not.
 
 ## Data Sources
-This application primarily relies on pre-trained models for detecting faces and embedding them into high-dimensional vectors. Because faces are learned over time via the app, there is no need to pre-train FaceNet on a defined set of user faces. 
-
-However, to optimize face detection:
-* The YOLO model will be trained locally using the [**WIDER FACE Kaggle dataset**](https://www.kaggle.com/datasets/canomercik/wider-face-dataset-for-yolov12-format). 
+This model uses primarily pretrained models for detecting people's faces and embedding them into high-dimensional vectors. Additionally, because faces are learned over time, there is no need to train the FaceNet model on a defined set of faces. However, in order to learn more about model training and to gain more experience in training YOLO models, the YOLO model used to detect faces will be trained locally using the [WIDER FACE](https://www.kaggle.com/datasets/canomercik/wider-face-dataset-for-yolov12-format) dataset. 
 
 ## Project Structure
 The repository is split into two primary components: the core application module (`main`) and the YOLO model training/evaluation space (`YOLO`).
