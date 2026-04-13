@@ -127,7 +127,6 @@ class FamiliarFacesPT():
                     self.camera.draw_box(frame, x, y, w, h, kf.getName())
                     kf.permanance = 0
             
-    ############## AI CODE ################################
             if not self.is_requesting_name and not self.pending_ui_contact_approvals.empty():
                 self.current_pending_contact = self.pending_ui_contact_approvals.get()
                 self.show_name_prompt_ui()
@@ -173,6 +172,7 @@ class FamiliarFacesPT():
         self.root.destroy()
 
 def main():
+    # See large comment above.
     root = tk.Tk()
     app = FamiliarFacesPT(root)
     
