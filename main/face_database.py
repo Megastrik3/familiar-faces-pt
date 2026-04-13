@@ -100,7 +100,6 @@ class Database():
         try:
             self.connection = sqlite3.connect("familiar_contacts.db")
             self.cursor = self.connection.cursor()
-
             success, encoded_image = cv2.imencode('.jpg', img)
             if success:
                 image_bytes = encoded_image.tobytes()
