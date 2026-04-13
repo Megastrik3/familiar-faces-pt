@@ -245,7 +245,7 @@ class Database():
                         "created_at": unknown_dates
                     })
                 return pending_contact_approvals
-                    
+            return []         
         except sqlite3.Error as e:
             print(f"Error rescanning unknown contacts: {e}")
         finally:            

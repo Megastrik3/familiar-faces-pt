@@ -108,8 +108,8 @@ class DeepFaceDetector():
             print("Face not properly centered or detected")
             print("Error:", e)
             self.retry += 1
-            if self.retry < 3:
-                self.detect(self.frame, self.x, self.y, self.w, self.h, kf, adjust=20)
+            #if self.retry < 3:
+                #self.detect(self.frame, self.x, self.y, self.w, self.h, kf, adjust=20)
 
     def knn_locate_names(self, embedding, img):
         # Get all contacts from the database
@@ -128,7 +128,7 @@ class DeepFaceDetector():
             avg_distance = np.mean(top_distances)
 
             # Define a similarity threshold. If the most common contact_id is below this threshold, consider it a match.
-            if avg_distance < 0.35:
+            if avg_distance < 0.45:
                 # Get the most common contact_id among the top 5 most similar embeddings
                 most_common = Counter([contact_ids[idx] for idx in sorted_similarities]).most_common(1)[0][0] # Get the first most common, then get the value of that most common
                 print(most_common)
