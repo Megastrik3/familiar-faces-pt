@@ -143,7 +143,7 @@ class DeepFaceDetector():
                     current_date = datetime.strptime(current_date.strftime(date_format), date_format)
                     last_embedding_date = datetime.strptime(last_seen, date_format)
                     print(f"Current date: {current_date}, Last embedding date: {last_embedding_date}")
-                    if (current_date + timedelta(seconds=5) - last_embedding_date).total_seconds() > 10: # 24 hours
+                    if (current_date + timedelta(seconds=10) - last_embedding_date).total_seconds() > 15: # 24 hours
                         print(f"Hello {name}! You've been seen {encounter_count+1} times.")
                         self.db.update_contact(int(most_common), embedding)
                         return name

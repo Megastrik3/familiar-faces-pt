@@ -8,7 +8,7 @@ import threading
 class CameraCapture:
     """Create a camera frame stream on a dedicated thread.
     """
-    def __init__(self, camera_index=1):
+    def __init__(self, camera_index=0):
         """Initialize the CameraCapture class
 
         Args:
